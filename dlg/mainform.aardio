@@ -1,0 +1,205 @@
+import win.ui;
+import process;
+import frpcapi;
+import settings;
+import service;
+import win.ui.statusbar;
+import fsys.log;
+import win.util.tray;
+import win.ui.menu;
+import toml;
+/*DSG{{*/
+winform = win.form(text="FrpcManager";right=511;bottom=407;border="dialog frame")
+winform.add(
+listview={cls="listview";left=8;top=56;right=504;bottom=360;acceptfiles=1;asel=false;bgcolor=16777215;dl=1;dr=1;edge=1;font=LOGFONT(h=-14;name='宋体');fullRow=1;gridLines=1;hscroll=1;msel=false;vscroll=1;z=1};
+serviceName={cls="edit";left=120;top=8;right=256;bottom=48;align="center";font=LOGFONT(h=-20);readonly=1;z=3};
+serviceStatus={cls="edit";left=368;top=8;right=496;bottom=48;align="center";font=LOGFONT(h=-20);multiline=1;readonly=1;z=5};
+static={cls="static";text="服务名称";left=16;top=8;right=104;bottom=40;align="center";center=1;font=LOGFONT(h=-20);transparent=1;z=2};
+static2={cls="static";text="服务状态";left=264;top=8;right=352;bottom=40;align="center";center=1;font=LOGFONT(h=-20);transparent=1;z=4}
+)
+/*}}*/
+
+var serviceName = settings.serviceName;
+
+var autoCloseFrpc = settings.userSettings.autoCloseFrpc;
+
+var logger = fsys.log(settings.logFile);
+// 保存proxies列表
+winform.proxies_list = {};
+// 更新界面的proxies列表
+var listProxies = function(){
+	winform.proxies_list = {};
+	var proxies_list = frpcapi.getProxies();
+	winform.listview.clear();
+	for(i=1;#proxies_list;1){
+		var proxies = proxies_list[i];
+		table.push(winform.proxies_list, proxies);
+		winform.listview.addItem(proxies, #winform.proxies_list+1);
+	}
+}
+// 更新配置文件
+var updateConfig = function(proxies_list){
+	var configToml = toml.getConfigToml(proxies_list);
+	frpcapi.setConfig(configToml);
+	win.delay(100);
+	listProxies();
+}
+// 更新frpc服务的状态
+var updateServiceStatus = function(sName){
+	if(service.isExist(sName)){
+		winform.serviceStatus.text =  service.isRunning(sName) ? "正在运行" : "已停止";
+	}else{
+		winform.serviceStatus.text = "未安装";
+	}
+}
+
+var main = function(){
+	winform.serviceName.text = serviceName;	
+	// 菜单栏
+	var menuHelp = win.ui.popmenu(winform);
+	menuHelp.add("使用说明",
+		function(id){
+			var url = "https://mp.weixin.qq.com/s/tOuob4nn8KGwrg5gf9D5ng";
+			process.execute(url);
+		} 
+	)
+	menuHelp.add("作者",
+		function(id){
+			var s = '公众号: Python成长路\r\n开发者：kanadeblisst\r\n';
+			win.msgbox(s,' ');
+		} 
+	)
+	menuHelp.add(); 
+	var menuOption = win.ui.popmenu(winform);
+	menuOption.add("更新状态", function(id){
+			updateServiceStatus(serviceName);
+		}
+	)
+	menuOption.add("启动服务", function(id){
+			if(service.isExist(serviceName) && !service.isRunning(serviceName)){
+				if(!service.start(serviceName)){
+					logger.printf("启动(%s)服务失败, 失败代码: %s!", serviceName, ..lasterr());
+				}
+				updateServiceStatus(serviceName);
+			}
+		}
+	)
+	menuOption.add("停止服务", function(id){
+			if(service.isExist(serviceName) && service.isRunning(serviceName)){
+				if(!service.stop(serviceName)){
+					logger.printf("停止(%s)服务失败, 失败代码: %s!", serviceName, ..lasterr());
+				}
+				updateServiceStatus(serviceName);
+			}
+		}
+	)
+	menuOption.add("删除服务", function(id){
+			if(service.isExist(serviceName)){
+				if(service.isRunning(serviceName)){
+					service.stop(serviceName);
+				}
+				if(!service.delete( serviceName)){
+					logger.printf("删除(%s)服务失败，请重启系统后重试!", serviceName);
+				}
+				updateServiceStatus(serviceName);
+			}
+		}
+	)
+	//创建主菜单
+	var menu = win.ui.menu(winform);
+	menu.add('服务', menuOption); 
+	menu.add('帮助', menuHelp);
+	// 列表
+	winform.listview.insertColumn("名称", 120) 
+	winform.listview.insertColumn("类型", 84) 
+	winform.listview.insertColumn("服务端口", 50) 
+	winform.listview.insertColumn("本地地址", 160) 
+	winform.listview.insertColumn("状态", 78) 
+	
+	winform.popmenu = win.ui.popmenu(winform);
+	winform.popmenu.add('添加',function(id){ 
+		var child,wb = winform.loadForm("\dlg\add.aardio", );
+		child.doModal(winform);
+		if(child.inputMsg){
+			table.push(winform.proxies_list, child.inputMsg);
+			updateConfig(winform.proxies_list);
+		}
+	});
+	
+	winform.popmenu.add('刷新',function(id){ 
+		listProxies();
+	});
+	winform.popmenu.add('编辑',function(id){ 
+		var curSelIndex = winform.listview.selIndex;
+		
+		var name = winform.listview.getItemText(curSelIndex, 1)
+		var netType = winform.listview.getItemText(curSelIndex,2)
+		var serverPort = winform.listview.getItemText(curSelIndex,3)
+		var local = winform.listview.getItemText(curSelIndex,4)
+		var status = winform.listview.getItemText(curSelIndex,5)
+		
+		var child, wb = winform.loadForm("\dlg\add.aardio", );
+		child.name.text = name;
+		child.netType.selText = netType;
+		child.serverPort.text = serverPort;
+		child.local.text = local;
+		
+		child.doModal(winform);
+		if(child.inputMsg){
+			winform.proxies_list[curSelIndex] = child.inputMsg;
+			updateConfig(winform.proxies_list);
+		}
+		
+	});
+	winform.popmenu.add('删除',function(id){ 
+		var curSelIndex = winform.listview.selIndex;
+		table.remove(winform.proxies_list, curSelIndex);
+		updateConfig(winform.proxies_list);
+	});
+	
+	// 底部提示栏
+	statusbar = win.ui.statusbar(winform)
+	
+	winform.listview.onClick = function(item,subItem,nmListView){
+		var name = winform.listview.getItemText(item, 1);
+		var status = winform.listview.getItemText(item, 5);
+		statusbar.setText(name + ": " + status);
+	}
+}
+
+
+
+main();
+
+
+winform.listview.onnotify = function(id,code,ptr){ 
+	select(code) { 
+		case 0xFFFFFFFB/*_NM_RCLICK*/  {
+			var x,y = win.getCursorPos();
+			winform.popmenu.popup(x,y,true);
+		}
+	}
+}
+// 2秒后更新，并且后面每隔5秒更新
+winform.setInterval(
+	2000, function(){
+		listProxies();
+		updateServiceStatus(serviceName);
+		return 5000;
+	}
+)
+
+winform.onClose = function(hwnd,message,wParam,lParam){
+	// 如果配置了autoCloseFrpc = true，则关闭服务
+    if(autoCloseFrpc === "true" && service.isExist(serviceName)){
+        if(service.isRunning(serviceName)){
+            service.stop(serviceName)
+            sleep(100);
+        }
+        service.delete( serviceName)
+    }
+}
+
+
+winform.show();
+return win.loopMessage();

@@ -1,0 +1,95 @@
+﻿import sys;
+import settings;
+namespace toml;
+
+
+var tempServerToml = /*
+user = "%s"
+
+serverAddr = "%s"
+serverPort = %s
+
+log.to = "./frpc.log"
+log.level = "info"
+log.maxDays = 3
+log.disablePrintColor = false
+
+auth.method = "token"
+auth.token = "%s"
+
+transport.protocol = "%s"
+transport.tls.enable = false
+
+webServer.addr = "%s"
+webServer.port = %s
+webServer.user = "%s"
+webServer.password = "%s"
+*/
+
+var serverToml = ..string.format(tempServerToml, ..sys.getUserName(), ..settings.userSettings.serverAddr,
+			..settings.userSettings.serverPort, ..settings.userSettings.authToken, ..settings.userSettings.protocol,
+			..settings.webServer.addr, tostring(..settings.webServer.port), ..settings.webServer.user, ..settings.webServer.password)
+
+
+var proxiesPluginTempToml = /*
+[[proxies]]
+name = "%s"
+type = "tcp"
+remotePort = %s
+[proxies.plugin]
+type = "%s"
+httpUser = "%s"
+httpPassword = "%s"
+*/
+
+var proxiesTempToml = /*
+[[proxies]]
+name = "%s"
+remotePort = %s
+type = "%s"
+localIP = "%s"
+localPort = %s
+*/
+
+var getProxiesToml = function(data_array){
+	// {name;netType;serverPort;local}
+	var name = data_array[1];
+	var netType = data_array[2];
+	var serverPort = data_array[3];
+	if(!serverPort || serverPort == ""){
+		return ;
+	}
+	
+	var local = data_array[4];
+	var localIP,localPort = ..table.unpack(..string.split(local,':', 2));
+	var toml;
+	
+	select(netType) {
+		case "http_proxy", "socks5" {
+			toml = ..string.format(proxiesPluginTempToml, name, serverPort, netType,
+							..settings.userSettings.username, ..settings.userSettings.password)
+		}
+		case "tcp", "udp" {
+			toml = ..string.format(proxiesTempToml, name, serverPort, netType,
+							localIP, localPort)
+		}
+		else{
+		}
+	}
+	return toml;
+}
+
+
+getConfigToml = function(data_array_list){
+	var configToml = serverToml;
+	
+	for(i=1;#data_array_list;1){
+		var data_array = data_array_list[i];
+		var proxiesToml = getProxiesToml(data_array);
+		if(!proxiesToml || proxiesToml == ""){
+			continue;
+		}
+		configToml = configToml + '\r\n\r\n' + proxiesToml;
+	}
+	return configToml;
+}

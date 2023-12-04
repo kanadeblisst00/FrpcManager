@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<project ver="10" name="FrpcManager" libEmbed="true" icon="..." ui="win" output="FrpcManager.exe" CompanyName="Python成长路" FileDescription="frp管理客户端" LegalCopyright="Copyright (C) 作者(kanadeblisst) 2023" ProductName="FrpManager" InternalName="frpc manager" FileVersion="0.0.0.08" ProductVersion="0.0.0.08" publishDir="/dist/" dstrip="false" local="false" ignored="false">
+	<file name="main.aardio" path="main.aardio" comment="main.aardio"/>
+	<folder name="资源文件" path="res" embed="true"/>
+	<folder name="窗体文件" path="dlg" comment="目录" embed="true" local="false" ignored="false">
+		<file name="add.aardio" path="dlg\add.aardio" comment="dlg\add.aardio"/>
+		<file name="mainform.aardio" path="dlg\mainform.aardio" comment="dlg\main.aardio"/>
+	</folder>
+</project>

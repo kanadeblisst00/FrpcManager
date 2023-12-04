@@ -1,0 +1,37 @@
+﻿import fsys.ini;
+namespace loadini;
+
+
+loadConfigIni = function(){
+	var configPath = ..io.localpath("\config.ini");
+	var ini = ..fsys.ini(configPath);
+	var serverAddr = ini.read("frps", "serverAddr");
+	var serverPort = ini.read("frps", "serverPort");
+	var authToken = ini.read("frps", "authToken");
+	var protocol = ini.read("frps", "protocol") : "tcp";
+	var autoCloseFrpc = ini.read("manager", "autoCloseFrpc") : "false";
+	var username = ini.read("verification", "username") : "root";
+	var password = ini.read("verification", "password") : "toor";
+	var config = {
+		serverAddr=serverAddr;
+		serverPort=serverPort;
+		authToken=authToken;
+		protocol=protocol;
+		autoCloseFrpc=autoCloseFrpc;
+		username=username;
+		password=password
+	}
+	return config;
+}
+
+
+
+
+
+
+
+
+
+
+
+

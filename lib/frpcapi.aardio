@@ -1,0 +1,79 @@
+﻿import web.rest.client;
+import crypt.bin;
+import web.json;
+import settings;
+namespace frpcapi;
+
+
+var auth = ..settings.webServer.user + ":" + ..settings.webServer.password;
+var headers = {
+	["Authorization"] = "Basic " + ..crypt.bin.encodeBase64(auth);
+    ['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko'
+}
+var httpClient = ..web.rest.client();
+httpClient._http.setTimeouts(1000, 2000, 1000);
+httpClient.setHeaders(headers);
+var api = ..settings.webApi;
+
+getProxies = function(){
+	var url = ..string.format("%s/api/status", api);
+	var html = httpClient.get(url);
+	if(!html){
+		..io.print("获取响应失败!");
+		return;
+	}
+	var datas = ..web.json.tryParse(html);
+	var tcpData = datas.tcp;
+	var results = {};
+	for(i=1;#tcpData;1){
+		var data = tcpData[i];
+		var tmp = ..string.split(data.name, '.', 2);
+		var name = tmp[#tmp];
+		var netType = data.plugin == "" ? data.type : data.plugin;
+		var serverPort = data.remote_addr;
+		if(serverPort != ""){
+			serverPort = ..string.split(serverPort, ':', 2)[2];
+		}
+		var local = data.local_addr;
+		var status = data.status;
+		if(status != "running") {
+			status = data.err;
+		}
+		..table.push(results, {name;netType;serverPort;local;status});
+	}
+	return results;
+}
+
+getConfig = function(){
+	var url = ..string.format("%s/api/config", api);
+	var config_toml = httpClient.get(url);
+	if(httpClient.lastStatusCode != 200){
+		..io.print("获取响应失败!");
+		return;
+	}
+	return config_toml;
+}
+
+var reloadConfig = function(){
+	var url = ..string.format("%s/api/reload", api);
+	var html = httpClient.get(url);
+	if(httpClient.lastStatusCode != 200){
+		..io.print("获取响应失败!");
+		return;
+	}
+	return true;
+}
+
+
+setConfig = function(config_toml){
+	var url = ..string.format("%s/api/config", api);
+	var html = httpClient.put(url, config_toml);
+	if(httpClient.lastStatusCode != 200){
+		..io.print("获取响应失败!");
+		return;
+	}
+	
+	return reloadConfig();
+}
+
+

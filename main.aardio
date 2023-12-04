@@ -1,0 +1,59 @@
+//RUNAS//
+import service
+import settings;
+import fsys.log;
+
+service.serviceName = settings.serviceName;
+ 
+var logger = fsys.log(settings.logFile);
+
+global.onError = function( err,over ){ 
+    if(!over){
+        import debug;
+        var stack = debug.traceback(,"调用栈",3);
+    }
+    
+    logger.print(err);
+    if( _STUDIO_INVOKED ) return err; 
+}
+
+// 判断是否在开发环境
+if( !_STUDIO_INVOKED ){
+	// 当命令行参数带有 --manager时，启动管理器界面
+	if( _ARGV.manager ){
+		import frpcservice;
+		frpcservice.createService(service.serviceName,"frpc manager","frpc的桌面管理端")
+		loadcodex("\dlg\mainform.aardio");
+		//不是服务进程,可以直接双击运行生成的EXE文件,aardio会自动启动简易版服务管理工具。
+		return 0;
+	}
+	
+	// 当直接启动时，是作为后台服务启动的
+	service.startDispatchThread(
+	
+    	//可以增加多个服务名与服务线程回调函数的键值对
+    	[service.serviceName] = function(serviceName,argv){ //注意此服务回调函数运行于独立线程
+       	
+        	import srvthread;
+        	
+        	//服务线程启动后第一件事应当是注册服务控制线程
+        	var srvStatus = service.registerCtrlThread(serviceName,srvthread.control)
+        	
+        	//服务切换到运行状态
+        	srvStatus.controlsAccepted = 0x1/*_SERVICE_ACCEPT_STOP*/ 
+        	srvStatus.currentState = 0x4/*_SERVICE_RUNNING*/;
+        	service.updateStatus(srvStatus,serviceName);
+         	
+        	//启动服务主线程
+        	srvthread.main(serviceName);
+        	
+        	//服务切换到停止状态
+        	srvStatus.controlsAccepted = 0;
+        	srvStatus.currentState = 0x1/*_SERVICE_STOPPED*/
+        	service.updateStatus(srvStatus,serviceName)
+    	}
+	)
+}
+else {
+	loadcodex("\dlg\mainform.aardio");
+}

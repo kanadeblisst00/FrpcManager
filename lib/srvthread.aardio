@@ -1,0 +1,42 @@
+﻿namespace srvthread;
+
+// 服务主线程
+main = function(serviceName){
+	import process.popen;
+	import fsys.log;
+	
+	var logger = fsys.log("\frpcservice.log");
+	var frpcPath = ..io.localpath("\frpc\frpc.exe");
+	var tomlPath = ..io.localpath("\frpc\frpc.toml");
+	if(!..io.exist(frpcPath) || !..io.exist(tomlPath)){
+		logger.printf("frpc路径错误：%s ", frpcPath)
+		return;
+	}
+	var frpcArgs = {"-c"; tomlPath};
+	var prcs = process.popen(frpcPath, frpcArgs)
+	var frpcPid = prcs.process.id;
+	logger.printf("frpc启动成功，进程pid: %d", frpcPid)
+	..thread.set("NT.SERVICE.CONTROL." + serviceName, frpcPid);
+	prcs.wait();
+}
+
+//注意这也是一个独立的线程，用户控制服务停止或启动时都会触发此函数
+control = function(control,eventType,pEventData){ 
+    import service;
+    import process;
+    import fsys.log;
+    
+    var logger = fsys.log("\frpcservice.log");
+    
+    if( control == 0x1/*_SERVICE_CONTROL_STOP*/ ){  
+        //控制线程中更新srvStatus，第一个参数只要指定需要更新的字段就行了
+        var frpcPid = ..thread.get("NT.SERVICE.CONTROL." + owner.serviceName);
+        service.updateStatus({currentState = 0x3/*_SERVICE_STOP_PENDING*/},owner.serviceName);
+        logger.printf("frpc开始停止进程，进程pid: %d", frpcPid)
+        if(frpcPid) {
+        	process(frpcPid).kill();
+        }
+    }
+     
+    return 0x0/*_NOERROR*/
+}

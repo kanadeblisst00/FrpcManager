@@ -1,0 +1,46 @@
+﻿import fsys.log;
+import service;
+import settings;
+import toml;
+namespace frpcservice;
+
+
+var logger = ..fsys.log(..settings.logFile);
+
+createService = function(serviceName,displayName,description){
+	// 编写配置文件
+	var frpcTomlPath = ..io.localpath("\frpc\frpc.toml");
+	if(!..io.exist(frpcTomlPath)){
+		var configToml = ..toml.getConfigToml({});
+		..string.save(frpcTomlPath, configToml);
+	}
+	// 创建和启动服务
+	if( ..service.isExist(serviceName) ){
+		logger.print("服务[" + serviceName + "] 已安装")
+		
+		if( ..service.isRunning(serviceName) ){
+			logger.print("服务[" + serviceName + "] 正在运行")
+		}
+		else{
+			logger.print("服务[" + serviceName + "] 已停止运行")
+			if( ..service.start(serviceName)  ){
+			 	sleep(500);
+			 	logger.print("服务[" + serviceName + "] 启动成功");
+			} 
+			else {
+				logger.print("服务[" + serviceName + "] 启动失败: " + ..lasterr()); 
+			}
+			
+		}
+	}
+	else{
+		logger.print("服务[" + serviceName + "] 未安装")
+		if( ..service.create(,serviceName,displayName:serviceName,description:serviceName)  ){
+			logger.print("服务[" + serviceName + "] 安装成功")
+		} 
+		else {
+			logger.print(..lasterr());
+		}
+	}
+	return true;
+}
