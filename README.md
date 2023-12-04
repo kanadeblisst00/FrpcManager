@@ -4,6 +4,10 @@
 
 ![](http://cdn.ikanade.cn/202312011848391.png)
 
+## 下载
+
+dist目录下的[FrpcManager.zip](/dist/FrpcManager.zip)
+
 ## 使用的文章说明
 
 [写一个frpc的windows服务管理器](https://mp.weixin.qq.com/s/tOuob4nn8KGwrg5gf9D5ng)
